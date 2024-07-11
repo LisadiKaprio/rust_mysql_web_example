@@ -1,4 +1,5 @@
-use actix_web::{web, App, HttpServer};
+use actix_cors::Cors;
+use actix_web::{http, web, App, HttpServer};
 use dotenv::dotenv;
 use sqlx::{migrate, mysql::*, query};
 use std::env;
@@ -150,7 +151,9 @@ async fn main() -> std::io::Result<()> {
     let _ = setup_initial_values(&app_state.pool).await;
 
     HttpServer::new(move || {
+        let cors = Cors::default().allowed_origin("http://localhost:5173");
         App::new()
+            .wrap(cors)
             .app_data(web::Data::new(app_state.clone()))
             .route("/", web::get().to(root))
             .route("/get/{argument}", web::get().to(handle_read_command))
