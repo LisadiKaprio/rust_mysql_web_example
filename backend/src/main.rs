@@ -39,8 +39,8 @@ struct Character {
 struct CharacterAddBody {
     name: String,
     birthday_season: String,
-    birthday_day: String,
-    is_bachelor: String,
+    birthday_day: u8,
+    is_bachelor: bool,
     best_gift: String,
 }
 
@@ -151,7 +151,10 @@ async fn main() -> std::io::Result<()> {
     let _ = setup_initial_values(&app_state.pool).await;
 
     HttpServer::new(move || {
-        let cors = Cors::default().allowed_origin("http://localhost:5173");
+        let cors = Cors::default()
+            .allowed_origin("http://localhost:5173")
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_header(http::header::CONTENT_TYPE);
         App::new()
             .wrap(cors)
             .app_data(web::Data::new(app_state.clone()))

@@ -122,29 +122,29 @@ pub mod http_responses {
             }
         }
 
-        let birthday_day_result = string_to_day(&body.birthday_day);
-        let birthday_day: u8;
-        match birthday_day_result {
-            Some(d) => birthday_day = d,
-            None => {
-                return HttpResponse::BadRequest().json(Response {
-                    message: "Invalid day. Please provide a number less or equal to 28."
-                        .to_string(),
-                })
-            }
-        }
+        // let birthday_day_result = string_to_day(&body.birthday_day);
+        let birthday_day = body.birthday_day.clone();
+        // match birthday_day_result {
+        //     Some(d) => birthday_day = d,
+        //     None => {
+        //         return HttpResponse::BadRequest().json(Response {
+        //             message: "Invalid day. Please provide a number less or equal to 28."
+        //                 .to_string(),
+        //         })
+        //     }
+        // }
 
-        let is_bachelor_result = string_to_bachelor_bool(&body.is_bachelor);
-        let is_bachelor: bool;
-        match is_bachelor_result {
-            Some(b) => is_bachelor = b,
-            None => {
-                return HttpResponse::BadRequest().json(Response {
-                    message: "Invalid is_bachelor value. Please provide a true or false boolean."
-                        .to_string(),
-                })
-            }
-        }
+        // let is_bachelor_result = string_to_bachelor_bool(&body.is_bachelor);
+        let is_bachelor = body.is_bachelor.clone();
+        // match is_bachelor_result {
+        //     Some(b) => is_bachelor = b,
+        //     None => {
+        //         return HttpResponse::BadRequest().json(Response {
+        //             message: "Invalid is_bachelor value. Please provide a true or false boolean."
+        //                 .to_string(),
+        //         })
+        //     }
+        // }
 
         let best_gift = &body.best_gift;
 
@@ -228,7 +228,7 @@ pub mod http_responses {
                 string_to_bachelor_bool(&body.change_is_bachelor.clone().unwrap());
             match is_bachelor_result {
                 Some(b) => {
-                    new_value = b.to_string();
+                    new_value = b.to_string().to_uppercase();
                     value_name = DbValue::Is_Bachelor.as_ref().to_lowercase();
                 }
                 None => {
@@ -248,10 +248,16 @@ pub mod http_responses {
             });
         }
 
-        let change_query = format!(
-            "UPDATE characters SET {} = {} WHERE name = {}",
-            value_name, new_value, body.name
-        );
+        let change_query = match value_name.as_str() {
+            "name" | "birthday_season" | "best_gift" => format!(
+                "UPDATE characters SET {} = '{}' WHERE name = '{}'",
+                value_name, new_value, body.name
+            ),
+            _ => format!(
+                "UPDATE characters SET {} = {} WHERE name = '{}'",
+                value_name, new_value, body.name
+            ),
+        };
 
         let result = query(&change_query).execute(&app_state.pool).await;
         match result {
@@ -259,7 +265,7 @@ pub mod http_responses {
                 message: "Changed character successfully.".to_string(),
             }),
             Err(e) => HttpResponse::BadRequest().json(Response {
-                message: format!("{}", e),
+                message: format!("{} - Tried to execute {}", e, change_query),
             }),
         }
     }
