@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 let showAddForm = ref<boolean>(false)
 let characterToAdd = ref<Character>({
@@ -8,6 +8,10 @@ let characterToAdd = ref<Character>({
   birthday_day: 1,
   is_bachelor: true,
   best_gift: 'Example Gift',
+})
+
+let prohibitAdding = computed(() => {
+  return characterToAdd.value.name === '' || characterToAdd.value.birthday_day === 0 || characterToAdd.value.birthday_season === '' || characterToAdd.value.best_gift === ''
 })
 
 let lastFetchedCharacter = ref<Character | undefined>(undefined)
@@ -33,6 +37,14 @@ interface CharacterChange {
   change_best_gift: string | undefined
 }
 
+const emptyCharacterChangeToAdd = () => {
+  characterChangeToAdd.value.change_name = undefined;
+  characterChangeToAdd.value.change_birthday_season = undefined,
+    characterChangeToAdd.value.change_birthday_day = undefined,
+    characterChangeToAdd.value.change_is_bachelor = undefined,
+    characterChangeToAdd.value.change_best_gift = undefined
+}
+
 const characterChangeToAdd = ref<CharacterChange>({
   name: 'Example Name',
   change_name: undefined,
@@ -42,11 +54,18 @@ const characterChangeToAdd = ref<CharacterChange>({
   change_best_gift: undefined
 })
 
+const seasons = ['spring', 'summer', 'fall', 'winter']
+
 const value_names = ['name', 'birthday_season', 'birthday_day', 'is_bachelor', 'best_gift']
 const showValueName = ref<string>('name')
 
+watch(showValueName, () => {
+  emptyCharacterChangeToAdd()
+})
+
 let characters = ref<Character[]>([])
 
+let showCharacters = ref<boolean>(true)
 const fetchAllCharacters = async () => {
   const response = await fetch('http://localhost:8080/get-all')
   const data = await response.json()
@@ -75,6 +94,7 @@ const submitCharacter = async () => {
 }
 
 const changeCharacter = async () => {
+  console.log(characterChangeToAdd.value)
   const response = await fetch('http://localhost:8080/change', {
     method: 'POST',
     headers: {
@@ -91,77 +111,81 @@ const changeCharacter = async () => {
 
 <template>
   <main>
+    <v-sheet :max-width="400">
+      <v-card class="pa-4" width="400" v-if="feedback" variant="tonal" color="orange">{{ feedback }}</v-card>
+      <v-btn class="ma-2" prepend-icon="mdi-plus" @click="showAddForm = !showAddForm">
+        {{ showAddForm ? 'Hide character submission form' : 'Show character submission form' }}
+      </v-btn>
+      <v-expand-transition>
+        <div v-if="showAddForm">
+          <div class="d-flex flex-column">
+            <v-text-field label="Name" v-model="characterToAdd.name" required />
+            <v-select label="Birthday Season" v-model="characterToAdd.birthday_season" :items="seasons"
+              required></v-select>
+            <v-select label="Birthday Day" v-model="characterToAdd.birthday_day"
+              :items="Array.from({ length: 28 }, (_, index) => index + 1)" required></v-select>
+            <v-checkbox :label="`Is Bachelor: ${characterToAdd.is_bachelor.toString()}`"
+              v-model="characterToAdd.is_bachelor" />
+            <v-text-field label="Best Gift" v-model="characterToAdd.best_gift" required />
+            <v-btn block color="green" :disabled="prohibitAdding" @click.preventDefault="submitCharacter">Submit new
+              character</v-btn>
+          </div>
+          <v-card v-if="lastFetchedCharacter">
+            <p>👉 Name: {{ lastFetchedCharacter.name }}</p>
+            <p>Birthday Season: {{ lastFetchedCharacter.birthday_season }}</p>
+            <p>Birthday Day: {{ lastFetchedCharacter.birthday_day }}</p>
+            <p>Is Bachelor: {{ lastFetchedCharacter.is_bachelor }}</p>
+            <p>Best Gift: {{ lastFetchedCharacter.best_gift }}</p>
+          </v-card>
+        </div>
+      </v-expand-transition>
 
-    <p>{{ feedback }}</p>
+      <br>
 
-    <button @click="showAddForm = true">Show character submission form</button>
-    <div v-if="showAddForm">
-      <div>
-        <label>Name:</label>
-        <input type="text" name="name" v-model="characterToAdd.name" required>
-        <label>Birthday Season:</label>
-        <input type="text" name="birthday_season" v-model="characterToAdd.birthday_season" required>
-        <label>Birthday Day:</label>
-        <input type="number" name="birthday_day" v-model="characterToAdd.birthday_day" required>
-        <label>Is Bachelor:</label>
-        <input type="text" name="is_bachelor" v-model="characterToAdd.is_bachelor" required>
-        <label>Best Gift:</label>
-        <input type="text" name="best_gift" v-model="characterToAdd.best_gift" required>
-        <button @click.preventDefault="submitCharacter">Submit</button>
-      </div>
-      <div v-if="lastFetchedCharacter">
-        <p>👉 Name: {{ lastFetchedCharacter.name }}</p>
-        <p>Birthday Season: {{ lastFetchedCharacter.birthday_season }}</p>
-        <p>Birthday Day: {{ lastFetchedCharacter.birthday_day }}</p>
-        <p>Is Bachelor: {{ lastFetchedCharacter.is_bachelor }}</p>
-        <p>Best Gift: {{ lastFetchedCharacter.best_gift }}</p>
-      </div>
-    </div>
+      <v-btn class="ma-2" prepend-icon="mdi-pencil" @click="showChangeForm = !showChangeForm">
+        {{ showChangeForm ? 'Hide change form' : 'Show change form' }}
+      </v-btn>
+      <v-expand-transition>
+        <div v-if="showChangeForm" class="v-expand-x-transition">
+          <v-text-field label="Name" v-model="characterChangeToAdd.name" required />
+          <v-select label="Value to change" v-model="showValueName" :items="value_names" required></v-select>
 
-    <br>
+          <v-text-field label="New Name" v-if="showValueName === 'name'" v-model="characterChangeToAdd.change_name" />
+          <v-text-field label="New Best Gift" v-if="showValueName === 'best_gift'"
+            v-model="characterChangeToAdd.change_best_gift" />
+          <v-select label="New Birthday Day" v-if="showValueName === 'birthday_day'"
+            v-model="characterChangeToAdd.change_birthday_day"
+            :items="Array.from({ length: 28 }, (_, index) => index + 1)"></v-select>
+          <v-select label="New Birthday Season" v-if="showValueName === 'birthday_season'"
+            v-model="characterChangeToAdd.change_birthday_season" :items="seasons" />
+          <v-checkbox
+            :label="`New Is Bachelor: ${characterChangeToAdd.change_is_bachelor !== undefined ? characterChangeToAdd.change_is_bachelor.toString() : '?'}`"
+            v-if="showValueName === 'is_bachelor'" v-model="characterChangeToAdd.change_is_bachelor" />
+          <v-btn color="green" block @click="changeCharacter">
+            Submit change to character
+          </v-btn>
+        </div>
+      </v-expand-transition>
 
-    <button @click="showChangeForm = !showChangeForm">Show character submission form</button>
-    <div v-if="showChangeForm">
+      <v-btn class="ma-2" prepend-icon="mdi-book" @click="fetchAllCharacters">
+        {{ characters.length > 0 ? 'Refresh all' : 'Read all' }}
 
-      <label>Character Name:</label>
-      <input type="text" name="name" v-model="characterChangeToAdd.name" required>
-      <label>Value to change:</label>
-      <select name="value_name" v-model="showValueName">
-        <option v-for="value_name in value_names" :key="value_name">{{ value_name }}</option>
-      </select>
-      <label>New Value:</label>
-      <input v-if="showValueName === 'name'" type="text" name="new_value" v-model="characterChangeToAdd.change_name"
-        required>
-      <input v-if="showValueName === 'best_gift'" type="text" name="new_value"
-        v-model="characterChangeToAdd.change_best_gift" required>
-      <select v-if="showValueName === 'birthday_day'" name="new_value"
-        v-model="characterChangeToAdd.change_birthday_day">
-        <option v-for="n in 28">{{ n.toString() }}</option>
-      </select>
-      <select v-if="showValueName === 'is_bachelor'" name="new_value" v-model="characterChangeToAdd.change_is_bachelor">
-        <option>true</option>
-        <option>false</option>
-      </select>
-      <select v-if="showValueName === 'birthday_season'" name="new_value"
-        v-model="characterChangeToAdd.change_birthday_season">
-        <option>spring</option>
-        <option>summer</option>
-        <option>fall</option>
-        <option>winter</option>
-      </select>
-      <button @click="changeCharacter">Submit</button>
-    </div>
-
-    <br>
-
-    <button @click="fetchAllCharacters">{{ characters.length > 0 ? 'Refresh all' : 'Read all' }}</button>
-    <div v-for="character in characters">
-      <p>👉 Name: {{ character.name }}</p>
-      <p>Birthday Season: {{ character.birthday_season }}</p>
-      <p>Birthday Day: {{ character.birthday_day }}</p>
-      <p>Is Bachelor: {{ character.is_bachelor }}</p>
-      <p>Best Gift: {{ character.best_gift }}</p>
-      <p>~~~</p>
-    </div>
+      </v-btn>
+      <v-btn class="ma-2" prepend-icon="mdi-eye" v-if="characters.length > 0" @click="showCharacters = !showCharacters">
+        {{ showCharacters ? 'Hide characters' : 'Show characters' }}
+      </v-btn>
+      <v-expand-transition>
+        <div v-if="showCharacters">
+          <v-card class="ma-4 pa-3" v-for="character in characters">
+            <p>👉 Name: {{ character.name }}</p>
+            <p>Birthday Season: {{ character.birthday_season }}</p>
+            <p>Birthday Day: {{ character.birthday_day }}</p>
+            <p>Is Bachelor: {{ character.is_bachelor }}</p>
+            <p>Best Gift: {{ character.best_gift }}</p>
+            <p>~~~</p>
+          </v-card>
+        </div>
+      </v-expand-transition>
+    </v-sheet>
   </main>
 </template>

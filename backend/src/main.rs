@@ -49,8 +49,8 @@ struct CharacterChangeBody {
     name: String,
     change_name: Option<String>,
     change_birthday_season: Option<String>,
-    change_birthday_day: Option<String>,
-    change_is_bachelor: Option<String>,
+    change_birthday_day: Option<u8>,
+    change_is_bachelor: Option<bool>,
     change_best_gift: Option<String>,
 }
 

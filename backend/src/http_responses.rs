@@ -175,6 +175,7 @@ pub mod http_responses {
         body: web::Json<CharacterChangeBody>,
         app_state: web::Data<AppState>,
     ) -> HttpResponse {
+        println!("handle_changing_character");
         let read_query = "SELECT * FROM characters WHERE name = ?";
 
         let row = query(read_query)
@@ -182,25 +183,37 @@ pub mod http_responses {
             .fetch_optional(&app_state.pool)
             .await;
 
-        if row.is_err() | matches!(row.unwrap(), None) {
+        if row.is_err() {
             return HttpResponse::BadRequest().json(Response {
-                message: "No row with this character found.".to_string(),
+                message: "Database error when trying to retrieve character - ensure this character has been added.".to_string(),
             });
         }
 
-        let value_name: String;
-        let new_value: String;
+        let change_query: Query<MySql, MySqlArguments>;
+
+        let query_string;
 
         if body.change_name.is_some() {
-            new_value = body.change_name.clone().unwrap();
-            value_name = DbValue::Name.as_ref().to_lowercase();
+            println!("change_name");
+            let new_name = body.change_name.clone().unwrap_or_default();
+            query_string = format!(
+                "UPDATE characters SET {} = ? WHERE name = ?",
+                DbValue::Name.as_ref().to_lowercase()
+            );
+            change_query = query(&query_string).bind(new_name).bind(body.name.clone());
         } else if body.change_birthday_season.is_some() {
+            println!("change_birthday_season");
             let birthday_season_result =
                 string_to_season(&body.change_birthday_season.clone().unwrap());
             match birthday_season_result {
                 Some(s) => {
-                    new_value = s.as_ref().to_lowercase();
-                    value_name = DbValue::Birthday_Season.as_ref().to_lowercase();
+                    query_string = format!(
+                        "UPDATE characters SET {} = ? WHERE name = ?",
+                        DbValue::Birthday_Season.as_ref().to_lowercase()
+                    );
+                    change_query = query(&query_string)
+                        .bind(s.as_ref().to_lowercase())
+                        .bind(body.name.clone());
                 }
                 None => {
                     return HttpResponse::BadRequest().json(Response {
@@ -210,62 +223,43 @@ pub mod http_responses {
                 }
             }
         } else if body.change_birthday_day.is_some() {
-            let birthday_day_result = string_to_day(&body.change_birthday_day.clone().unwrap());
-            match birthday_day_result {
-                Some(d) => {
-                    new_value = d.to_string();
-                    value_name = DbValue::Birthday_Day.as_ref().to_lowercase();
-                }
-                None => {
-                    return HttpResponse::BadRequest().json(Response {
-                        message: "Invalid day. Please provide a number less or equal to 28."
-                            .to_string(),
-                    })
-                }
-            }
+            println!("change_birthday_day");
+            query_string = format!(
+                "UPDATE characters SET {} = ? WHERE name = ?",
+                DbValue::Birthday_Day.as_ref().to_lowercase()
+            );
+            change_query = query(&query_string)
+                .bind(body.change_birthday_day)
+                .bind(body.name.clone());
         } else if body.change_is_bachelor.is_some() {
-            let is_bachelor_result =
-                string_to_bachelor_bool(&body.change_is_bachelor.clone().unwrap());
-            match is_bachelor_result {
-                Some(b) => {
-                    new_value = b.to_string().to_uppercase();
-                    value_name = DbValue::Is_Bachelor.as_ref().to_lowercase();
-                }
-                None => {
-                    return HttpResponse::BadRequest().json(Response {
-                        message:
-                            "Invalid is_bachelor value. Please provide a true or false boolean."
-                                .to_string(),
-                    })
-                }
-            }
+            query_string = format!(
+                "UPDATE characters SET {} = ? WHERE name = ?",
+                DbValue::Is_Bachelor.as_ref().to_lowercase()
+            );
+            change_query = query(&query_string)
+                .bind(body.change_is_bachelor)
+                .bind(body.name.clone());
         } else if body.change_best_gift.is_some() {
-            new_value = body.change_best_gift.clone().unwrap();
-            value_name = DbValue::Best_Gift.as_ref().to_lowercase();
+            println!("change_best_gift");
+            let new_gift = body.change_best_gift.clone().unwrap_or_default();
+            query_string = format!(
+                "UPDATE characters SET {} = ? WHERE name = ?",
+                DbValue::Best_Gift.as_ref().to_lowercase()
+            );
+            change_query = query(&query_string).bind(new_gift).bind(body.name.clone());
         } else {
             return HttpResponse::BadRequest().json(Response {
                 message: "Invalid request.".to_string(),
             });
         }
 
-        let change_query = match value_name.as_str() {
-            "name" | "birthday_season" | "best_gift" => format!(
-                "UPDATE characters SET {} = '{}' WHERE name = '{}'",
-                value_name, new_value, body.name
-            ),
-            _ => format!(
-                "UPDATE characters SET {} = {} WHERE name = '{}'",
-                value_name, new_value, body.name
-            ),
-        };
-
-        let result = query(&change_query).execute(&app_state.pool).await;
+        let result = change_query.execute(&app_state.pool).await;
         match result {
             Ok(_) => HttpResponse::Ok().json(Response {
-                message: "Changed character successfully.".to_string(),
+                message: format!("Changed {} successfully.", body.name.clone()),
             }),
             Err(e) => HttpResponse::BadRequest().json(Response {
-                message: format!("{} - Tried to execute {}", e, change_query),
+                message: format!("{}", e),
             }),
         }
     }

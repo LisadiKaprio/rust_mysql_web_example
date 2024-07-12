@@ -1,4 +1,5 @@
 @import './base.css';
+@import "@mdi/font";
 
 #app {
   max-width: 1280px;
