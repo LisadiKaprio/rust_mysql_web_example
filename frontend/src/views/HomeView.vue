@@ -111,7 +111,7 @@ const changeCharacter = async () => {
 
 <template>
   <main>
-    <v-sheet :max-width="400">
+    <v-sheet :max-width="400" class="d-flex flex-column">
       <v-card class="pa-4" width="400" v-if="feedback" variant="tonal" color="orange">{{ feedback }}</v-card>
       <v-btn class="ma-2" prepend-icon="mdi-plus" @click="showAddForm = !showAddForm">
         {{ showAddForm ? 'Hide character submission form' : 'Show character submission form' }}
@@ -140,8 +140,6 @@ const changeCharacter = async () => {
         </div>
       </v-expand-transition>
 
-      <br>
-
       <v-btn class="ma-2" prepend-icon="mdi-pencil" @click="showChangeForm = !showChangeForm">
         {{ showChangeForm ? 'Hide change form' : 'Show change form' }}
       </v-btn>
@@ -166,6 +164,8 @@ const changeCharacter = async () => {
           </v-btn>
         </div>
       </v-expand-transition>
+
+      <br>
 
       <v-btn class="ma-2" prepend-icon="mdi-book" @click="fetchAllCharacters">
         {{ characters.length > 0 ? 'Refresh all' : 'Read all' }}

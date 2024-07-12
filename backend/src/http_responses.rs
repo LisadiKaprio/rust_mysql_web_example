@@ -2,7 +2,7 @@ pub mod http_responses {
     use crate::*;
     use actix_web::{web, HttpResponse};
     use serde::{Deserialize, Serialize};
-    use sqlx::{query, Row};
+    use sqlx::{query::Query, Row};
     use std::str::FromStr;
     use strum_macros::{AsRefStr, EnumString};
 
