@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import dotenv from 'dotenv'
+
+const HOST = import.meta.env.VITE_HOST
 
 let showAddForm = ref<boolean>(false)
 let characterToAdd = ref<Character>({
@@ -67,21 +70,21 @@ let characters = ref<Character[]>([])
 
 let showCharacters = ref<boolean>(true)
 const fetchAllCharacters = async () => {
-  const response = await fetch('http://localhost:8080/get-all')
+  const response = await fetch(`${HOST}:8080/get-all`)
   const data = await response.json()
 
   characters.value = data
 }
 
 const fetchCharacter = async (characterName: string) => {
-  const response = await fetch(`http://localhost:8080/get/${characterName}`)
+  const response = await fetch(`${HOST}:8080/get/${characterName}`)
   const data = await response.json()
 
   lastFetchedCharacter.value = data
 }
 
 const submitCharacter = async () => {
-  const response = await fetch('http://localhost:8080/add', {
+  const response = await fetch(`${HOST}:8080/add`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -94,8 +97,7 @@ const submitCharacter = async () => {
 }
 
 const changeCharacter = async () => {
-  console.log(characterChangeToAdd.value)
-  const response = await fetch('http://localhost:8080/change', {
+  const response = await fetch(`${HOST}:8080/change`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -167,7 +169,7 @@ const changeCharacter = async () => {
         </v-expand-transition>
 
         <br>
-        <v-card class="pa-4" width="400" v-if="feedback" variant="tonal" color="orange">{{ feedback }}</v-card>
+        <v-card class="pa-4" width="300" v-if="feedback" variant="tonal" color="orange">{{ feedback }}</v-card>
 
         <v-btn class="ma-2" prepend-icon="mdi-book" @click="fetchAllCharacters">
           {{ characters.length > 0 ? 'Refresh all' : 'Read all' }}

@@ -18,7 +18,9 @@ To run the server side, you need to have Rust and MySQL installed on your machin
 
 3. In backend folder, copy the already existing `.env.example` file in the root folder and rename it to `.env`. Change the credentials in the first line to be the ones that you have previously set up in your MySQL environment.
 
-4. Run the setup script to create the database:
+    In case you have changed the backend host to be something other than "localhost", adjust accordingly in the `.env` file located in the frontend folder.
+
+4. In the backend folder, run the setup script to create the database:
     ```console
     cd backend
     cargo run --bin setup_db

@@ -143,6 +143,9 @@ async fn setup_initial_values(pool: &MySqlPool) -> Result<(), Box<dyn Error>> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
+    let db_host = env::var("DB_HOST").expect("DB_HOST must be set in your .env file");
+
     let pool = connect_to_db().await.unwrap();
     println!("Connected to database! ✨");
 
@@ -165,7 +168,7 @@ async fn main() -> std::io::Result<()> {
             .route("/add", web::post().to(handle_adding_character))
             .route("/change", web::post().to(handle_changing_character))
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((db_host, 8080))?
     .run()
     .await
 }
