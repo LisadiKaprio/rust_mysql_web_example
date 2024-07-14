@@ -144,6 +144,7 @@ async fn setup_initial_values(pool: &MySqlPool) -> Result<(), Box<dyn Error>> {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let pool = connect_to_db().await.unwrap();
+    println!("Connected to database! ✨");
 
     let app_state = AppState { pool };
 

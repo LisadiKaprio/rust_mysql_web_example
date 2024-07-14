@@ -90,7 +90,7 @@ const submitCharacter = async () => {
   })
 
   feedback.value = await response.text()
-  void fetchAllCharacters()
+  void fetchCharacter(characterToAdd.value.name)
 }
 
 const changeCharacter = async () => {
@@ -104,6 +104,7 @@ const changeCharacter = async () => {
   })
 
   feedback.value = await response.text()
+  void fetchAllCharacters()
 
 }
 
@@ -111,81 +112,85 @@ const changeCharacter = async () => {
 
 <template>
   <main>
-    <v-sheet :max-width="400" class="d-flex flex-column">
-      <v-card class="pa-4" width="400" v-if="feedback" variant="tonal" color="orange">{{ feedback }}</v-card>
-      <v-btn class="ma-2" prepend-icon="mdi-plus" @click="showAddForm = !showAddForm">
-        {{ showAddForm ? 'Hide character submission form' : 'Show character submission form' }}
-      </v-btn>
-      <v-expand-transition>
-        <div v-if="showAddForm">
-          <div class="d-flex flex-column">
-            <v-text-field label="Name" v-model="characterToAdd.name" required />
-            <v-select label="Birthday Season" v-model="characterToAdd.birthday_season" :items="seasons"
-              required></v-select>
-            <v-select label="Birthday Day" v-model="characterToAdd.birthday_day"
-              :items="Array.from({ length: 28 }, (_, index) => index + 1)" required></v-select>
-            <v-checkbox :label="`Is Bachelor: ${characterToAdd.is_bachelor.toString()}`"
-              v-model="characterToAdd.is_bachelor" />
-            <v-text-field label="Best Gift" v-model="characterToAdd.best_gift" required />
-            <v-btn block color="green" :disabled="prohibitAdding" @click.preventDefault="submitCharacter">Submit new
-              character</v-btn>
+    <div class="d-flex flex-row">
+      <v-sheet :max-width="400" class="d-flex flex-column">
+        <v-btn class="ma-2" prepend-icon="mdi-plus" @click="showAddForm = !showAddForm">
+          {{ showAddForm ? 'Hide character submission form' : 'Show character submission form' }}
+        </v-btn>
+        <v-expand-transition>
+          <div v-if="showAddForm">
+            <div class="d-flex flex-column">
+              <v-text-field label="Name" v-model="characterToAdd.name" required />
+              <v-select label="Birthday Season" v-model="characterToAdd.birthday_season" :items="seasons"
+                required></v-select>
+              <v-select label="Birthday Day" v-model="characterToAdd.birthday_day"
+                :items="Array.from({ length: 28 }, (_, index) => index + 1)" required></v-select>
+              <v-checkbox :label="`Is Bachelor: ${characterToAdd.is_bachelor.toString()}`"
+                v-model="characterToAdd.is_bachelor" />
+              <v-text-field label="Best Gift" v-model="characterToAdd.best_gift" required />
+              <v-btn block color="green" :disabled="prohibitAdding" @click.preventDefault="submitCharacter">Submit new
+                character</v-btn>
+            </div>
+            <v-card class="ma-4 pa-3" v-if="lastFetchedCharacter">
+              <p>👉 Name: {{ lastFetchedCharacter.name }}</p>
+              <p>Birthday Season: {{ lastFetchedCharacter.birthday_season }}</p>
+              <p>Birthday Day: {{ lastFetchedCharacter.birthday_day }}</p>
+              <p>Is Bachelor: {{ lastFetchedCharacter.is_bachelor }}</p>
+              <p>Best Gift: {{ lastFetchedCharacter.best_gift }}</p>
+            </v-card>
           </div>
-          <v-card v-if="lastFetchedCharacter">
-            <p>👉 Name: {{ lastFetchedCharacter.name }}</p>
-            <p>Birthday Season: {{ lastFetchedCharacter.birthday_season }}</p>
-            <p>Birthday Day: {{ lastFetchedCharacter.birthday_day }}</p>
-            <p>Is Bachelor: {{ lastFetchedCharacter.is_bachelor }}</p>
-            <p>Best Gift: {{ lastFetchedCharacter.best_gift }}</p>
-          </v-card>
-        </div>
-      </v-expand-transition>
+        </v-expand-transition>
 
-      <v-btn class="ma-2" prepend-icon="mdi-pencil" @click="showChangeForm = !showChangeForm">
-        {{ showChangeForm ? 'Hide change form' : 'Show change form' }}
-      </v-btn>
-      <v-expand-transition>
-        <div v-if="showChangeForm" class="v-expand-x-transition">
-          <v-text-field label="Name" v-model="characterChangeToAdd.name" required />
-          <v-select label="Value to change" v-model="showValueName" :items="value_names" required></v-select>
+        <v-btn class="ma-2" prepend-icon="mdi-pencil" @click="showChangeForm = !showChangeForm">
+          {{ showChangeForm ? 'Hide change form' : 'Show change form' }}
+        </v-btn>
+        <v-expand-transition>
+          <div v-if="showChangeForm" class="v-expand-x-transition">
+            <v-text-field label="Name" v-model="characterChangeToAdd.name" required />
+            <v-select label="Value to change" v-model="showValueName" :items="value_names" required></v-select>
 
-          <v-text-field label="New Name" v-if="showValueName === 'name'" v-model="characterChangeToAdd.change_name" />
-          <v-text-field label="New Best Gift" v-if="showValueName === 'best_gift'"
-            v-model="characterChangeToAdd.change_best_gift" />
-          <v-select label="New Birthday Day" v-if="showValueName === 'birthday_day'"
-            v-model="characterChangeToAdd.change_birthday_day"
-            :items="Array.from({ length: 28 }, (_, index) => index + 1)"></v-select>
-          <v-select label="New Birthday Season" v-if="showValueName === 'birthday_season'"
-            v-model="characterChangeToAdd.change_birthday_season" :items="seasons" />
-          <v-checkbox
-            :label="`New Is Bachelor: ${characterChangeToAdd.change_is_bachelor !== undefined ? characterChangeToAdd.change_is_bachelor.toString() : '?'}`"
-            v-if="showValueName === 'is_bachelor'" v-model="characterChangeToAdd.change_is_bachelor" />
-          <v-btn color="green" block @click="changeCharacter">
-            Submit change to character
-          </v-btn>
-        </div>
-      </v-expand-transition>
+            <v-text-field label="New Name" v-if="showValueName === 'name'" v-model="characterChangeToAdd.change_name" />
+            <v-text-field label="New Best Gift" v-if="showValueName === 'best_gift'"
+              v-model="characterChangeToAdd.change_best_gift" />
+            <v-select label="New Birthday Day" v-if="showValueName === 'birthday_day'"
+              v-model="characterChangeToAdd.change_birthday_day"
+              :items="Array.from({ length: 28 }, (_, index) => index + 1)"></v-select>
+            <v-select label="New Birthday Season" v-if="showValueName === 'birthday_season'"
+              v-model="characterChangeToAdd.change_birthday_season" :items="seasons" />
+            <v-checkbox
+              :label="`New Is Bachelor: ${characterChangeToAdd.change_is_bachelor !== undefined ? characterChangeToAdd.change_is_bachelor.toString() : '?'}`"
+              v-if="showValueName === 'is_bachelor'" v-model="characterChangeToAdd.change_is_bachelor" />
+            <v-btn color="green" block @click="changeCharacter">
+              Submit change to character
+            </v-btn>
+          </div>
+        </v-expand-transition>
 
-      <br>
+        <br>
+        <v-card class="pa-4" width="400" v-if="feedback" variant="tonal" color="orange">{{ feedback }}</v-card>
 
-      <v-btn class="ma-2" prepend-icon="mdi-book" @click="fetchAllCharacters">
-        {{ characters.length > 0 ? 'Refresh all' : 'Read all' }}
+        <v-btn class="ma-2" prepend-icon="mdi-book" @click="fetchAllCharacters">
+          {{ characters.length > 0 ? 'Refresh all' : 'Read all' }}
 
-      </v-btn>
-      <v-btn class="ma-2" prepend-icon="mdi-eye" v-if="characters.length > 0" @click="showCharacters = !showCharacters">
-        {{ showCharacters ? 'Hide characters' : 'Show characters' }}
-      </v-btn>
-      <v-expand-transition>
-        <div v-if="showCharacters">
-          <v-card class="ma-4 pa-3" v-for="character in characters">
-            <p>👉 Name: {{ character.name }}</p>
-            <p>Birthday Season: {{ character.birthday_season }}</p>
-            <p>Birthday Day: {{ character.birthday_day }}</p>
-            <p>Is Bachelor: {{ character.is_bachelor }}</p>
-            <p>Best Gift: {{ character.best_gift }}</p>
-            <p>~~~</p>
-          </v-card>
-        </div>
-      </v-expand-transition>
-    </v-sheet>
+        </v-btn>
+        <v-btn class="ma-2" prepend-icon="mdi-eye" v-if="characters.length > 0"
+          @click="showCharacters = !showCharacters">
+          {{ showCharacters ? 'Hide characters' : 'Show characters' }}
+        </v-btn>
+        <v-expand-transition>
+          <div v-if="showCharacters">
+            <v-card class="ma-4 pa-3" v-for="character in characters">
+              <p>👉 Name: {{ character.name }}</p>
+              <p>Birthday Season: {{ character.birthday_season }}</p>
+              <p>Birthday Day: {{ character.birthday_day }}</p>
+              <p>Is Bachelor: {{ character.is_bachelor }}</p>
+              <p>Best Gift: {{ character.best_gift }}</p>
+              <p>~~~</p>
+            </v-card>
+          </div>
+        </v-expand-transition>
+      </v-sheet>
+
+    </div>
   </main>
 </template>

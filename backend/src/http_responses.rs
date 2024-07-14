@@ -39,12 +39,17 @@ pub mod http_responses {
     }
 
     async fn convert_row_to_character(row: MySqlRow) -> Character {
+        let name = row.get::<String, _>("name");
+        let birthday_season = Season::from_str(&row.get::<String, _>("birthday_season")).unwrap();
+        let birthday_day = row.get::<i32, _>("birthday_day") as u8;
+        let is_bachelor = row.get::<bool, _>("is_bachelor");
+        let best_gift = row.get::<String, _>("best_gift");
         Character {
-            name: row.get("name"),
-            birthday_season: Season::from_str(row.get("birthday_season")).unwrap(),
-            birthday_day: row.get::<i32, &str>("birthday_day") as u8,
-            is_bachelor: row.get::<bool, &str>("is_bachelor") as bool,
-            best_gift: row.get("best_gift"),
+            name,
+            birthday_season,
+            birthday_day,
+            is_bachelor,
+            best_gift,
         }
     }
 
@@ -53,9 +58,7 @@ pub mod http_responses {
         app_state: web::Data<AppState>,
     ) -> HttpResponse {
         let argument: String = path.into_inner();
-
         if argument.is_empty() {
-            println!("Provide an argument, like 'all' to read all characters or 'Abigail' to read specific character.");
             return HttpResponse::BadRequest().json(Response {
                 message: "Please provide an argument like 'all' or character's name.".to_string(),
             });
@@ -102,12 +105,6 @@ pub mod http_responses {
         body: web::Json<CharacterAddBody>,
         app_state: web::Data<AppState>,
     ) -> HttpResponse {
-        // if body {
-        //     return HttpResponse::BadRequest().json(Response{
-        //         message: "Please provide arguments: name, birthday season, birthday day, bachelor status, best gift.".to_string()
-        //     });
-        // }
-
         let name = &body.name;
 
         let birthday_season_result = string_to_season(&body.birthday_season);
@@ -122,30 +119,8 @@ pub mod http_responses {
             }
         }
 
-        // let birthday_day_result = string_to_day(&body.birthday_day);
         let birthday_day = body.birthday_day.clone();
-        // match birthday_day_result {
-        //     Some(d) => birthday_day = d,
-        //     None => {
-        //         return HttpResponse::BadRequest().json(Response {
-        //             message: "Invalid day. Please provide a number less or equal to 28."
-        //                 .to_string(),
-        //         })
-        //     }
-        // }
-
-        // let is_bachelor_result = string_to_bachelor_bool(&body.is_bachelor);
         let is_bachelor = body.is_bachelor.clone();
-        // match is_bachelor_result {
-        //     Some(b) => is_bachelor = b,
-        //     None => {
-        //         return HttpResponse::BadRequest().json(Response {
-        //             message: "Invalid is_bachelor value. Please provide a true or false boolean."
-        //                 .to_string(),
-        //         })
-        //     }
-        // }
-
         let best_gift = &body.best_gift;
 
         let character_to_add = Character {
@@ -155,8 +130,8 @@ pub mod http_responses {
             is_bachelor,
             best_gift: best_gift.to_string(),
         };
-        let result = character_to_add.add_to_database(&app_state.pool).await;
 
+        let result = character_to_add.add_to_database(&app_state.pool).await;
         match result {
             Ok(_) => {
                 return HttpResponse::Ok().json(Response {
@@ -175,11 +150,12 @@ pub mod http_responses {
         body: web::Json<CharacterChangeBody>,
         app_state: web::Data<AppState>,
     ) -> HttpResponse {
-        println!("handle_changing_character");
+        let character_change = body.0;
+
         let read_query = "SELECT * FROM characters WHERE name = ?";
 
         let row = query(read_query)
-            .bind(&body.name)
+            .bind(&character_change.name)
             .fetch_optional(&app_state.pool)
             .await;
 
@@ -190,21 +166,20 @@ pub mod http_responses {
         }
 
         let change_query: Query<MySql, MySqlArguments>;
-
         let query_string;
 
-        if body.change_name.is_some() {
-            println!("change_name");
-            let new_name = body.change_name.clone().unwrap_or_default();
+        if character_change.change_name.is_some() {
+            let new_name = character_change.change_name.unwrap_or_default();
             query_string = format!(
                 "UPDATE characters SET {} = ? WHERE name = ?",
                 DbValue::Name.as_ref().to_lowercase()
             );
-            change_query = query(&query_string).bind(new_name).bind(body.name.clone());
-        } else if body.change_birthday_season.is_some() {
-            println!("change_birthday_season");
+            change_query = query(&query_string)
+                .bind(new_name)
+                .bind(&character_change.name);
+        } else if character_change.change_birthday_season.is_some() {
             let birthday_season_result =
-                string_to_season(&body.change_birthday_season.clone().unwrap());
+                string_to_season(&character_change.change_birthday_season.unwrap());
             match birthday_season_result {
                 Some(s) => {
                     query_string = format!(
@@ -213,7 +188,7 @@ pub mod http_responses {
                     );
                     change_query = query(&query_string)
                         .bind(s.as_ref().to_lowercase())
-                        .bind(body.name.clone());
+                        .bind(&character_change.name);
                 }
                 None => {
                     return HttpResponse::BadRequest().json(Response {
@@ -222,31 +197,31 @@ pub mod http_responses {
                     })
                 }
             }
-        } else if body.change_birthday_day.is_some() {
-            println!("change_birthday_day");
+        } else if character_change.change_birthday_day.is_some() {
             query_string = format!(
                 "UPDATE characters SET {} = ? WHERE name = ?",
                 DbValue::Birthday_Day.as_ref().to_lowercase()
             );
             change_query = query(&query_string)
-                .bind(body.change_birthday_day)
-                .bind(body.name.clone());
-        } else if body.change_is_bachelor.is_some() {
+                .bind(character_change.change_birthday_day)
+                .bind(&character_change.name);
+        } else if character_change.change_is_bachelor.is_some() {
             query_string = format!(
                 "UPDATE characters SET {} = ? WHERE name = ?",
                 DbValue::Is_Bachelor.as_ref().to_lowercase()
             );
             change_query = query(&query_string)
-                .bind(body.change_is_bachelor)
-                .bind(body.name.clone());
-        } else if body.change_best_gift.is_some() {
-            println!("change_best_gift");
-            let new_gift = body.change_best_gift.clone().unwrap_or_default();
+                .bind(character_change.change_is_bachelor)
+                .bind(&character_change.name);
+        } else if character_change.change_best_gift.is_some() {
+            let new_gift = character_change.change_best_gift.unwrap_or_default();
             query_string = format!(
                 "UPDATE characters SET {} = ? WHERE name = ?",
                 DbValue::Best_Gift.as_ref().to_lowercase()
             );
-            change_query = query(&query_string).bind(new_gift).bind(body.name.clone());
+            change_query = query(&query_string)
+                .bind(new_gift)
+                .bind(&character_change.name);
         } else {
             return HttpResponse::BadRequest().json(Response {
                 message: "Invalid request.".to_string(),
@@ -256,7 +231,7 @@ pub mod http_responses {
         let result = change_query.execute(&app_state.pool).await;
         match result {
             Ok(_) => HttpResponse::Ok().json(Response {
-                message: format!("Changed {} successfully.", body.name.clone()),
+                message: format!("Changed {} successfully.", &character_change.name),
             }),
             Err(e) => HttpResponse::BadRequest().json(Response {
                 message: format!("{}", e),
@@ -269,24 +244,6 @@ pub mod http_responses {
         match birthday_season_result {
             Ok(season) => Some(season),
             Err(_) => None,
-        }
-    }
-
-    fn string_to_day(string: &str) -> Option<u8> {
-        let birthday_day_result = string.parse::<u8>();
-        match birthday_day_result {
-            Ok(number) if number <= 28 => Some(number),
-            _ => None,
-        }
-    }
-
-    fn string_to_bachelor_bool(string: &str) -> Option<bool> {
-        if string.to_lowercase() == "true" {
-            Some(true)
-        } else if string.to_lowercase() == "false" {
-            Some(false)
-        } else {
-            None
         }
     }
 }
