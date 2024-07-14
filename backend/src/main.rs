@@ -87,10 +87,21 @@ impl Character {
 
 async fn connect_to_db() -> Result<MySqlPool, sqlx::Error> {
     dotenv().ok();
-    let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in your .env file");
+    let url =
+        env::var("ROOT_DATABASE_URL").expect("ROOT_DATABASE_URL must be set in your .env file");
+
+    let db_protocol = env::var("DB_PROTOCOL").expect("DB_PROTOCOL must be set in your .env file");
+    let db_user = env::var("DB_USER").expect("DB_USER must be set in your .env file");
+    let db_password = env::var("DB_PASSWORD").expect("DB_PASSWORD must be set in your .env file");
+    let db_host = env::var("DB_HOST").expect("DB_HOST must be set in your .env file");
+    let db_port = env::var("DB_PORT").expect("DB_PORT must be set in your .env file");
     let db_name = env::var("DB_NAME").expect("DB_NAME must be set in your .env file");
 
-    let full_db_path = format!("{}/{}", url, db_name);
+    let full_db_path = format!(
+        // example: mysql://test_user:password@localhost:3306/test_db3
+        "{}://{}:{}@{}:{}/{}",
+        db_protocol, db_user, db_password, db_host, db_port, db_name
+    );
 
     MySqlPool::connect(&full_db_path).await
 }
@@ -144,7 +155,7 @@ async fn setup_initial_values(pool: &MySqlPool) -> Result<(), Box<dyn Error>> {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-    let db_host = env::var("DB_HOST").expect("DB_HOST must be set in your .env file");
+    let http_host = env::var("DB_HOST").expect("DB_HOST must be set in your .env file");
 
     let pool = connect_to_db().await.unwrap();
     println!("Connected to database! ✨");
@@ -168,7 +179,9 @@ async fn main() -> std::io::Result<()> {
             .route("/add", web::post().to(handle_adding_character))
             .route("/change", web::post().to(handle_changing_character))
     })
-    .bind((db_host, 8080))?
+    // in next line, whenever i try to insert a u16 variable at the second place, i get an error "An attempt was made to access a socket in a way forbidden by its access permissions."
+    // however, when I write it out by same exact number that the variable refers to (8080), it works again
+    .bind((http_host, 8080))?
     .run()
     .await
 }

@@ -2,7 +2,8 @@
 import { ref, watch, computed } from 'vue'
 import dotenv from 'dotenv'
 
-const HOST = import.meta.env.VITE_HOST
+const HOST = import.meta.env.VITE_SERVER_HTTP_HOST
+const PORT = import.meta.env.VITE_SERVER_HTTP_PORT
 
 let showAddForm = ref<boolean>(false)
 let characterToAdd = ref<Character>({
@@ -70,21 +71,21 @@ let characters = ref<Character[]>([])
 
 let showCharacters = ref<boolean>(true)
 const fetchAllCharacters = async () => {
-  const response = await fetch(`${HOST}:8080/get-all`)
+  const response = await fetch(`${HOST}:${PORT}/get-all`)
   const data = await response.json()
 
   characters.value = data
 }
 
 const fetchCharacter = async (characterName: string) => {
-  const response = await fetch(`${HOST}:8080/get/${characterName}`)
+  const response = await fetch(`${HOST}:${PORT}/get/${characterName}`)
   const data = await response.json()
 
   lastFetchedCharacter.value = data
 }
 
 const submitCharacter = async () => {
-  const response = await fetch(`${HOST}:8080/add`, {
+  const response = await fetch(`${HOST}:${PORT}/add`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -97,7 +98,7 @@ const submitCharacter = async () => {
 }
 
 const changeCharacter = async () => {
-  const response = await fetch(`${HOST}:8080/change`, {
+  const response = await fetch(`${HOST}:${PORT}/change`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
